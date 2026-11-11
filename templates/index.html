@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dynamic Resume Builder</title>
+<style>
+  :root { --blue:#2563eb; --purple:#7c3aed; --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: "Segoe UI", system-ui, sans-serif; color:var(--ink);
+         background: linear-gradient(135deg,#eff6ff,#f5f3ff); min-height:100vh;
+         display:flex; align-items:center; justify-content:center; text-align:center; padding:24px; }
+  .hero h1 { font-size:2.4rem; margin:0 0 8px; }
+  .hero p { color:var(--muted); max-width:520px; margin:0 auto 24px; }
+  button { font:inherit; cursor:pointer; border:0; border-radius:8px; }
+  .primary { background:var(--blue); color:#fff; padding:12px 28px; font-weight:600; font-size:1.05rem; }
+  .primary:hover { background:#1d4ed8; }
+  .ghost { background:#fff; border:1px solid var(--line); padding:6px 12px; color:var(--blue); font-weight:600; }
+  .danger { background:none; color:#dc2626; font-size:.85rem; padding:4px 8px; }
+
+  dialog { border:0; border-radius:14px; padding:0; width:min(860px, 96vw); max-height:92vh;
+           box-shadow:0 20px 60px rgba(0,0,0,.3); text-align:left; }
+  dialog::backdrop { background:rgba(17,24,39,.55); backdrop-filter: blur(2px); }
+  form { display:flex; flex-direction:column; max-height:92vh; }
+  .dlg-head { padding:16px 24px; background:var(--blue); color:#fff; display:flex; justify-content:space-between; align-items:center; }
+  .dlg-head h2 { margin:0; font-size:1.2rem; }
+  .dlg-head button { background:none; color:#fff; font-size:1.5rem; }
+  .dlg-body { padding:8px 24px 16px; overflow-y:auto; }
+  .dlg-foot { padding:14px 24px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:10px; align-items:center; }
+  .err { color:#dc2626; margin-right:auto; font-size:.9rem; }
+  fieldset { border:0; border-top:2px solid var(--blue); margin:18px 0 0; padding:10px 0 0; }
+  legend { font-weight:700; color:var(--blue); padding:0 8px 0 0; font-size:1.05rem; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 14px; }
+  .full { grid-column:1 / -1; }
+  label { display:flex; flex-direction:column; font-size:.82rem; font-weight:600; color:var(--muted); gap:4px; }
+  input, textarea { font:inherit; font-size:.95rem; padding:8px 10px; border:1px solid #d1d5db; border-radius:6px; color:var(--ink); }
+  input:focus, textarea:focus { outline:2px solid #bfdbfe; border-color:var(--blue); }
+  textarea { resize:vertical; min-height:70px; }
+  .card { background:#f8fafc; border:1px solid var(--line); border-left:4px solid var(--purple);
+          border-radius:8px; padding:12px; margin:10px 0; }
+  .card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-weight:600; font-size:.85rem; color:var(--purple); }
+  .hint { font-size:.78rem; color:var(--muted); font-weight:400; }
+  @media (max-width:600px){ .grid{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+  <div class="hero">
+    <h1>📄 Resume Builder</h1>
+    <p>Fill in your details in a simple form and instantly download a professionally styled Word resume.</p>
+    <button class="primary" id="openBtn">Create My Resume</button>
+  </div>
+
+  <dialog id="dlg">
+    <form id="form" method="dialog">
+      <div class="dlg-head"><h2>Enter your details</h2><button type="button" id="closeBtn" aria-label="Close">&times;</button></div>
+      <div class="dlg-body">
+
+        <fieldset><legend>👤 Personal</legend>
+          <div class="grid">
+            <label>Full name *<input name="name" required></label>
+            <label>Job title / headline<input name="title" placeholder="e.g. Software Engineer"></label>
+            <label class="full">Subtitle<input name="subtitle" placeholder="e.g. Backend | Cloud | DevOps"></label>
+            <label>Email<input name="email" type="email"></label>
+            <label>Alternate email<input name="alt_email" type="email"></label>
+            <label>Phone<input name="phone"></label>
+            <label>Location<input name="location" placeholder="City, State"></label>
+            <label>Date of birth<input name="dob" placeholder="DD/MM/YYYY"></label>
+            <label>Place (for declaration)<input name="place" placeholder="Defaults to location"></label>
+            <label>LinkedIn URL<input name="linkedin"></label>
+            <label>GitHub URL<input name="github"></label>
+            <label>Portfolio / website<input name="website"></label>
+            <label>Profile photo <span class="hint">(optional)</span><input name="photo" type="file" accept="image/*" id="photo"></label>
+          </div>
+        </fieldset>
+
+        <fieldset><legend>💼 Professional Summary</legend>
+          <label class="full"><textarea name="summary" rows="4" placeholder="A short paragraph about your experience and strengths"></textarea></label>
+        </fieldset>
+
+        <fieldset><legend>🛠️ Technical Skills</legend>
+          <div id="skills"></div><button type="button" class="ghost" data-add="skills">+ Add skill category</button>
+        </fieldset>
+
+        <fieldset><legend>🏢 Experience</legend>
+          <div id="experience"></div><button type="button" class="ghost" data-add="experience">+ Add job</button>
+        </fieldset>
+
+        <fieldset><legend>🚀 Projects</legend>
+          <div id="projects"></div><button type="button" class="ghost" data-add="projects">+ Add project</button>
+        </fieldset>
+
+        <fieldset><legend>🎓 Education</legend>
+          <div id="education"></div><button type="button" class="ghost" data-add="education">+ Add education</button>
+        </fieldset>
+
+        <fieldset><legend>🏅 Certifications</legend>
+          <div id="certifications"></div><button type="button" class="ghost" data-add="certifications">+ Add certification</button>
+        </fieldset>
+
+        <fieldset><legend>🎯 Activities &amp; Interests</legend>
+          <label class="full">Comma separated<input name="interests" placeholder="Chess, Photography, Football"></label>
+        </fieldset>
+      </div>
+      <div class="dlg-foot">
+        <span class="err" id="err"></span>
+        <button type="button" class="ghost" id="cancelBtn">Cancel</button>
+        <button type="submit" class="primary" id="submitBtn">Generate Resume</button>
+      </div>
+    </form>
+  </dialog>
+
+<script>
+const dlg = document.getElementById('dlg');
+const form = document.getElementById('form');
+const err = document.getElementById('err');
+
+// Templates for each repeatable section
+const TEMPLATES = {
+  skills: `<div class="grid">
+      <label>Category<input data-k="category" placeholder="Programming Languages"></label>
+      <label>Items<input data-k="items" placeholder="Python, Java, SQL"></label></div>`,
+  experience: `<div class="grid">
+      <label>Job title<input data-k="title"></label>
+      <label>Dates<input data-k="dates" placeholder="Jan 2022 – Present"></label>
+      <label>Company<input data-k="company"></label>
+      <label>Location<input data-k="location"></label>
+      <label class="full">Responsibilities <span class="hint">(one per line)</span><textarea data-k="duties"></textarea></label></div>`,
+  projects: `<div class="grid">
+      <label class="full">Project title<input data-k="title"></label>
+      <label class="full">Description<textarea data-k="description"></textarea></label>
+      <label>Source / details URL<input data-k="url"></label>
+      <label>Live demo URL<input data-k="live_url"></label></div>`,
+  education: `<div class="grid">
+      <label class="full">Degree / qualification<input data-k="degree"></label>
+      <label>School / university<input data-k="school"></label>
+      <label>Year<input data-k="year"></label>
+      <label class="full">Details <span class="hint">(specialization, grade…)</span><input data-k="details"></label></div>`,
+  certifications: `<div class="grid">
+      <label>Certification<input data-k="name"></label>
+      <label>Issuer<input data-k="issuer"></label></div>`
+};
+const LABELS = { skills:'Skill category', experience:'Job', projects:'Project', education:'Education', certifications:'Certification' };
+
+function addCard(section) {
+  const wrap = document.getElementById(section);
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `<div class="card-head"><span>${LABELS[section]} #<b>${wrap.children.length + 1}</b></span>
+    <button type="button" class="danger">Remove</button></div>` + TEMPLATES[section];
+  card.querySelector('.danger').onclick = () => {
+    card.remove();
+    [...wrap.children].forEach((c, i) => c.querySelector('b').textContent = i + 1);
+  };
+  wrap.appendChild(card);
+}
+document.querySelectorAll('[data-add]').forEach(b => b.onclick = () => addCard(b.dataset.add));
+// start with one blank card in each section
+Object.keys(TEMPLATES).forEach(addCard);
+
+function collect(section) {
+  return [...document.getElementById(section).children].map(card => {
+    const o = {};
+    card.querySelectorAll('[data-k]').forEach(el => o[el.dataset.k] = el.value.trim());
+    if (o.duties !== undefined) o.duties = o.duties.split('\n').map(s => s.trim()).filter(Boolean);
+    return o;
+  });
+}
+const readPhoto = f => new Promise(res => {
+  if (!f) return res(null);
+  const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => res(null); r.readAsDataURL(f);
+});
+
+document.getElementById('openBtn').onclick = () => dlg.showModal();
+const close = () => { err.textContent = ''; dlg.close(); };
+document.getElementById('closeBtn').onclick = close;
+document.getElementById('cancelBtn').onclick = close;
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  err.textContent = '';
+  const fd = new FormData(form);
+  const data = {};
+  for (const [k, v] of fd.entries()) if (typeof v === 'string') data[k] = v.trim();
+  data.interests = (data.interests || '').split(',').map(s => s.trim()).filter(Boolean);
+  Object.keys(TEMPLATES).forEach(s => data[s] = collect(s));
+  data.photo = await readPhoto(document.getElementById('photo').files[0]);
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = 'Generating…';
+  try {
+    const res = await fetch('/generate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Something went wrong');
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = (data.name.replace(/[^A-Za-z0-9]+/g, '_') || 'Resume') + '_Resume.docx';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    dlg.close();
+  } catch (ex) { err.textContent = ex.message; }
+  finally { btn.disabled = false; btn.textContent = 'Generate Resume'; }
+});
+</script>
+</body>
+</html>
+
