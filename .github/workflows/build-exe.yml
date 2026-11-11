@@ -30,7 +30,7 @@ jobs:
         shell: pwsh
         run: python -c "from resume_builder import build_resume; assert build_resume({'name':'CI Test'}).getbuffer().nbytes > 0"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: DynamicResumeBuilder-windows
           path: dist/DynamicResumeBuilder.exe
