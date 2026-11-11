@@ -5,9 +5,10 @@
 Author: Ishan Chakraborty
 License: MIT
 """
+from . import linkedin
 from .builder import build_resume
 
-__all__ = ["build_resume"]
+__all__ = ["build_resume", "linkedin"]
 __author__ = "Ishan Chakraborty"
 __license__ = "MIT"
 

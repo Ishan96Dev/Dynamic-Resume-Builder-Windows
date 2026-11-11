@@ -41,6 +41,11 @@
   .card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-weight:600; font-size:.85rem; color:var(--purple); }
   .hint { font-size:.78rem; color:var(--muted); font-weight:400; }
   @media (max-width:600px){ .grid{ grid-template-columns:1fr; } }
+  .li-btn { display:inline-block; background:#0a66c2; color:#fff; text-decoration:none; font-weight:700; padding:9px 18px; border-radius:8px; margin-right:10px; }
+  .li-btn:hover { background:#004182; }
+  .how { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:8px 12px; font-size:.88rem; }
+  .how summary { cursor:pointer; font-weight:700; color:var(--blue); }
+  .how ol { margin:4px 0 8px; padding-left:20px; } .how p { margin:8px 0 2px; }
 </style>
 </head>
 <body>
@@ -55,6 +60,38 @@
       <div class="dlg-head"><h2>Enter your details</h2><button type="button" id="closeBtn" aria-label="Close">&times;</button></div>
       <div class="dlg-body">
 
+        <fieldset><legend>🔗 Import from LinkedIn</legend>
+          <div class="grid">
+            {% if linkedin_oauth %}
+            <div class="full"><a class="li-btn" href="/auth/linkedin">in&nbsp; Connect with LinkedIn</a>
+              <span class="hint">Fills name, email and photo via LinkedIn's official sign-in.</span></div>
+            {% endif %}
+            <details class="full how">
+              <summary>How do I get my details from LinkedIn?</summary>
+              <p><b>Option A – Profile PDF (quickest)</b></p>
+              <ol>
+                <li>Open your profile on <a href="https://www.linkedin.com/in/" target="_blank" rel="noopener">linkedin.com</a> (desktop browser).</li>
+                <li>Click the <b>More</b> (or <b>Resources</b>) button under your name.</li>
+                <li>Choose <b>Save to PDF</b>. The file downloads automatically.</li>
+                <li>Upload that <code>.pdf</code> below.</li>
+              </ol>
+              <p><b>Option B – Full data export (most complete)</b></p>
+              <ol>
+                <li>Go to <b>Me &rsaquo; Settings &amp; Privacy &rsaquo; Data privacy &rsaquo; Get a copy of your data</b>.</li>
+                <li>Pick <b>Want something in particular?</b> and tick Profile, Positions, Education, Skills, Certifications, Projects (or choose the larger archive).</li>
+                <li>Click <b>Request archive</b>. LinkedIn emails you a download link (can take a few minutes to 24 hours).</li>
+                <li>Download the <code>.zip</code> and upload it below &mdash; no need to unzip it.</li>
+              </ol>
+              <p class="hint">The PDF is read by pattern-matching, so please review the filled fields before generating.</p>
+            </details>
+            <label class="full">Upload LinkedIn profile PDF or data export (.zip)
+              <input type="file" accept=".pdf,.zip" id="liZip"></label>
+            <label class="full">LinkedIn profile URL<input name="linkedin" placeholder="https://www.linkedin.com/in/your-name"></label>
+            <input type="hidden" name="photo_url">
+          </div>
+          <p class="hint">LinkedIn doesn't allow reading a profile from its URL (scraping breaks its Terms), so the URL is only added to your resume.</p>
+        </fieldset>
+
         <fieldset><legend>👤 Personal</legend>
           <div class="grid">
             <label>Full name *<input name="name" required></label>
@@ -66,7 +103,6 @@
             <label>Location<input name="location" placeholder="City, State"></label>
             <label>Date of birth<input name="dob" placeholder="DD/MM/YYYY"></label>
             <label>Place (for declaration)<input name="place" placeholder="Defaults to location"></label>
-            <label>LinkedIn URL<input name="linkedin"></label>
             <label>GitHub URL<input name="github"></label>
             <label>Portfolio / website<input name="website"></label>
             <label>Profile photo <span class="hint">(optional)</span><input name="photo" type="file" accept="image/*" id="photo"></label>
@@ -174,6 +210,45 @@ document.getElementById('openBtn').onclick = () => dlg.showModal();
 const close = () => { err.textContent = ''; dlg.close(); };
 document.getElementById('closeBtn').onclick = close;
 document.getElementById('cancelBtn').onclick = close;
+
+// ---- LinkedIn prefill ----
+function fillLinkedIn(d) {
+  ['name','title','email','location','website','summary','photo_url','linkedin'].forEach(k => {
+    if (d[k] && form.elements[k]) form.elements[k].value = d[k];
+  });
+  Object.keys(TEMPLATES).forEach(section => {
+    const items = (d[section] || []).filter(o => Object.values(o).some(v => v && v.length));
+    if (!items.length) return;
+    document.getElementById(section).innerHTML = '';
+    items.forEach(item => {
+      addCard(section);
+      const card = document.getElementById(section).lastElementChild;
+      card.querySelectorAll('[data-k]').forEach(el => {
+        const v = item[el.dataset.k];
+        el.value = Array.isArray(v) ? v.join('\n') : (v || '');
+      });
+    });
+  });
+}
+document.getElementById('liZip').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  err.textContent = '';
+  const fd = new FormData(); fd.append('file', f);
+  try {
+    const res = await fetch('/api/linkedin/import', { method:'POST', body: fd });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || 'Import failed');
+    fillLinkedIn(d);
+  } catch (ex) { err.textContent = ex.message; }
+});
+(async () => {
+  const q = new URLSearchParams(location.search).get('linkedin');
+  if (!q) return;
+  history.replaceState(null, '', '/');
+  dlg.showModal();
+  if (q === 'ok') fillLinkedIn(await (await fetch('/api/linkedin/profile')).json());
+  else err.textContent = 'LinkedIn sign-in failed or was cancelled.';
+})();
 
 form.addEventListener('submit', async e => {
   e.preventDefault();

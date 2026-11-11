@@ -1,3 +1,5 @@
 flask
 python-docx
+requests
+pypdf
 pywebview

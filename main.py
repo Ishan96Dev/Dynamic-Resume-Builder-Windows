@@ -6,6 +6,7 @@ inside a native WebView2 window.
 Author: Ishan Chakraborty
 License: MIT
 """
+import os
 import socket
 import threading
 
@@ -17,14 +18,26 @@ from app import app
 APP_TITLE = "Dynamic Resume Builder"
 
 
-def _free_port():
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
+PREFERRED_PORT = 5000  # matches the default LinkedIn OAuth redirect URL
+
+
+def _pick_port():
+    """Use port 5000 (so the LinkedIn redirect URL is stable); fall back to any free port."""
+    for candidate in (PREFERRED_PORT, 0):
+        with socket.socket() as s:
+            try:
+                s.bind(("127.0.0.1", candidate))
+            except OSError:
+                continue
+            return s.getsockname()[1]
+    raise RuntimeError("No free local port available")
 
 
 def main():
-    port = _free_port()
+    port = _pick_port()
+    # Keep the OAuth redirect URL in sync with the port actually in use
+    # (an explicit LINKEDIN_REDIRECT_URI from the user still wins).
+    os.environ.setdefault("LINKEDIN_REDIRECT_URI", f"http://127.0.0.1:{port}/auth/linkedin/callback")
     server = make_server("127.0.0.1", port, app, threaded=True)
     threading.Thread(target=server.serve_forever, daemon=True).start()
 
